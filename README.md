@@ -53,6 +53,16 @@ feedback is very welcome.
 * `atria::testing` provides testing tools and frameworks for writing
   spies, mocks, micro-benchmarks and more.
 
+## How to use library with CMake
+
+cmake_minimum_required(VERSION 3.0)
+project(AtriaSample)
+list(APPEND CMAKE_PREFIX_PATH "INSTALLATION_DIRECTORY")
+set(CMAKE_CXX_STANDARD 11)
+find_package(Atria 1.0.0 REQUIRED)
+add_executable(AtriaSample main.cpp)
+target_link_libraries(AtriaSample Atria::atria)
+
 ## Documentation
 
 **Reference documentation**
