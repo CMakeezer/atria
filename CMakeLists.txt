@@ -4,21 +4,19 @@ cmake_minimum_required(VERSION 3.1.0)
 
 project(Atria C CXX)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-include(cotire)
 include(FeatureSummary)
 include(CodeCoverage)
 include(PrintProperties)
 set(Atria_VERSION_MAJOR 0)
 set(Atria_VERSION_MINOR 0)
 set(CMAKE_VERBOSE_MAKEFILE FALSE)
-set(ENABLE_COTIRE_BUILD TRUE)
 set(ENABLE_INSTALL TRUE)
-set(COTIRE_DEBUG FALSE)
-set(COTIRE_VERBOSE FALSE)
-set(ENABLE_TEST TRUE)
+option(ENABLE_TEST "" TRUE)
 set(PRINT_TARGET_PROPERTIES FALSE)
 set(ENABLE_COVERAGE FALSE)
 
+find_package(cxxopts REQUIRED)
+find_package(eggs.variant REQUIRED)
 
 # Enable C++11
 if (NOT CMAKE_CXX_STANDARD)
@@ -91,32 +89,19 @@ add_library(atria ${atria_sources})
 set_target_properties(atria PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(atria PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/compat>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third-party/eggs-variant/include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third-party/cxxopts/src>)
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/compat>)
 target_compile_options(atria
         PUBLIC
         ${warning_options})
-target_link_libraries(atria PRIVATE Boost::boost)
+target_link_libraries(atria PRIVATE Boost::boost cxxopts::cxxopts Eggs::Variant)
 if (PRINT_TARGET_PROPERTIES)
     print_target_properties(atria)
 endif ()
 
-if (ENABLE_COTIRE_BUILD)
-    set_target_properties(atria
-            PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
-    cotire(atria)
-    get_target_property(_prefixHeader atria COTIRE_CXX_PREFIX_HEADER)
-endif ()
-
-add_executable(example-boost-signal examples/xform_boost_signal.cpp)
-target_link_libraries(example-boost-signal atria)
-if (ENABLE_COTIRE_BUILD)
-    set_target_properties(example-boost-signal PROPERTIES
-            COTIRE_CXX_PREFIX_HEADER_INIT ${_prefixHeader}
-            COTIRE_ADD_UNITY_BUILD FALSE)
-    cotire(example-boost-signal)
-endif ()
+if(BUILD_EXAMPLES)
+    add_executable(example-boost-signal examples/xform_boost_signal.cpp)
+    target_link_libraries(example-boost-signal atria)
+endif()
 
 # Definining tests
 if (GTEST_FOUND AND ENABLE_TEST)
@@ -128,12 +113,6 @@ if (GTEST_FOUND AND ENABLE_TEST)
             GTest::Main
             ${CMAKE_THREAD_LIBS_INIT})
     add_test(atria-test-all atria-test-all)
-    if (ENABLE_COTIRE_BUILD)
-        #        set_target_properties(atria-test-all PROPERTIES
-        #                COTIRE_CXX_PREFIX_HEADER_INIT ${_prefixHeader}
-        #                COTIRE_ADD_UNITY_BUILD FALSE)
-        #        cotire(atria-test-all)
-    endif ()
 
     if (ENABLE_COVERAGE)
         SETUP_TARGET_FOR_COVERAGE(
@@ -147,12 +126,6 @@ if (GTEST_FOUND AND ENABLE_TEST)
     target_link_libraries(atria-benchmark-xform
             atria)
     add_test(atria-benchmark-xform atria-benchmark-xform)
-    if (ENABLE_COTIRE_BUILD)
-        set_target_properties(atria-benchmark-xform PROPERTIES
-                COTIRE_CXX_PREFIX_HEADER_INIT ${_prefixHeader}
-                COTIRE_ADD_UNITY_BUILD FALSE)
-        cotire(atria-benchmark-xform)
-    endif ()
 endif ()
 
 
@@ -194,6 +167,12 @@ if (ENABLE_INSTALL)
             DIRECTORY "${PROJECT_SOURCE_DIR}/src/"
             DESTINATION ${include_install_dir}
             FILES_MATCHING PATTERN "*.*hpp")
+
+install(
+            DIRECTORY "${PROJECT_SOURCE_DIR}/compat/"
+            DESTINATION ${include_install_dir}
+            FILES_MATCHING PATTERN "*.*hpp")
+
 
     install(
             FILES "${project_config}" "${version_config}"
